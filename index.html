@@ -1,22 +1,741 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Учет выдачи материалов</title>
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
+    :root {
+      --primary-color: #4a90e2;
+      --primary-hover-color: #357bd8;
+      --secondary-color: #6c757d;
+      --secondary-hover-color: #5a6268;
+      --success-color: #5cb85c;
+      --success-bg-color: #f8d7da; /* Изменен на бледно-розовый */
+      --success-border-color: #f5c6cb;
+      --error-color: #d9534f;
+      --error-bg-color: #f2dede;
+      --error-border-color: #ebcccc;
+      --background-color: #f7f9fc;
+      --card-bg-color: #ffffff;
+      --text-color: #333;
+      --light-text-color: #666;
+      --border-color: #e0e6ed;
+      --shadow-color: rgba(0, 0, 0, 0.08);
+      --disabled-bg-color: #f8d7da;
+      --disabled-text-color: #721c24;
+      --disabled-border-color: #f5c6cb;
     }
-    iframe {
-      border: none;
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+      background-color: var(--background-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text-color);
+      padding: 20px;
+    }
+
+    #app {
+      background-color: var(--card-bg-color);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px var(--shadow-color);
+      width: 90%;
+      max-width: 600px;
+      padding: 40px;
+      box-sizing: border-box;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease-in-out;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+    }
+
+    h1, h2 {
+      color: var(--primary-color);
+      text-align: center;
+      margin-bottom: 25px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+    
+    #auth-status {
+      font-weight: 600;
+      color: var(--light-text-color);
+      font-size: 1.1em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: calc(100% - 150px);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    #auth-status::before {
+      content: '👤';
+      font-size: 1.1em;
+    }
+
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    input[type="text"],
+    input[type="number"] {
       width: 100%;
-      height: 100%;
+      padding: 12px 15px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 1em;
+      box-sizing: border-box;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    input:focus {
+      border-color: var(--primary-color);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+    }
+
+    .button {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1em;
+      font-weight: 600;
+      text-align: center;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    .button:hover:not(:disabled) {
+      background-color: var(--primary-hover-color);
+      transform: translateY(-2px);
+    }
+
+    .button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .button.loading {
+      position: relative;
+      color: transparent;
+      pointer-events: none;
+    }
+    
+    .button.loading::after {
+      content: "Отправка...";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+    }
+
+    .category-buttons, .subcategory-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .category-button, .subcategory-button {
+      padding: 15px;
+      font-size: 0.9em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-height: 60px;
+      text-align: center;
+      background-color: #f0f4f8;
+      color: var(--primary-color);
+      border: 1px solid #d9e2ec;
+      transition: all 0.3s ease;
+    }
+
+    .category-button:hover:not(:disabled), .subcategory-button:hover:not(:disabled) {
+      background-color: #e6eef5;
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+    }
+
+    .category-button:disabled, .subcategory-button:disabled {
+      background-color: var(--disabled-bg-color);
+      color: var(--disabled-text-color);
+      border-color: var(--disabled-border-color);
+      cursor: not-allowed;
+    }
+
+    .message {
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 1em;
+    }
+
+    .message.success {
+      background-color: var(--success-bg-color);
+      color: var(--disabled-text-color);
+      border: 1px solid var(--success-border-color);
+    }
+    
+    .message.error {
+      background-color: var(--error-bg-color);
+      color: var(--error-color);
+      border: 1px solid var(--error-border-color);
+    }
+
+    #current-item-info {
+      font-size: 1.3em;
+      margin-bottom: 20px;
+      color: var(--primary-color);
+      font-weight: 600;
+      text-align: center;
+      padding: 10px 0;
+      background-color: #e9f2fa;
+      border-radius: 8px;
+    }
+    
+    #logout-button {
+      background-color: var(--error-color);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+
+    #logout-button:hover {
+      background-color: #c9302c;
+    }
+    
+    .back-button {
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1em;
+      font-weight: 600;
+      transition: background-color 0.3s;
+      margin-top: 20px;
+    }
+    
+    .back-button:hover {
+      background-color: var(--secondary-hover-color);
+    }
+
+    .action-buttons-grid, .confirm-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .confirm-button.yes {
+      background-color: var(--success-color);
+    }
+    
+    .confirm-button.yes:hover {
+      background-color: #4cae4c;
+    }
+    
+    .confirm-button.no {
+      background-color: var(--primary-color);
+    }
+    
+    .confirm-button.no:hover {
+      background-color: var(--primary-hover-color);
+    }
+
+    #confirm-prompt strong {
+      font-size: 1.3em;
+      color: var(--primary-color);
+    }
+
+    #confirm-prompt .continue {
+      display: block;
+      margin-top: 20px;
+      font-size: 1.4em;
+      font-weight: bold;
+      color: var(--success-color);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    .action-buttons-grid .back-button,
+    .action-buttons-grid .button {
+      margin-top: 0;
     }
   </style>
 </head>
 <body>
-  <iframe src="https://script.google.com/macros/s/AKfycbyr4ao-gMpxc4WNc2MDD4LPe-9RpIlg6cvN0vqs7CCAE5-k2IG28NCpcnVwtDc2MrCR/exec"></iframe>
+  <div id="app">
+    <header>
+      <div id="auth-status" style="display: none;">Ст. смены: Загрузка...</div>
+      <button id="logout-button" style="display: none;">Деавторизоваться</button>
+    </header>
+    <main>
+      <div id="auth-screen" class="screen active">
+        <h2>Авторизация старшего смены</h2>
+        <input type="text" id="shift-manager-id" placeholder="Введите ID" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+        <button id="auth-button" class="button">Войти</button>
+        <div id="auth-message" class="message" style="display: none;"></div>
+      </div>
+
+      <div id="employee-id-screen" class="screen">
+        <h2>введите свой Employee ID/h2>
+        <input type="text" id="employee-id" placeholder="ID сотрудника" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+        <button id="employee-id-submit" class="button">Далее</button>
+        <div id="employee-id-message" class="message" style="display: none;"></div>
+      </div>
+
+      <div id="category-screen" class="screen">
+        <h2>Выберите категорию</h2>
+        <div id="category-buttons" class="category-buttons"></div>
+        <button id="back-to-employee-id" class="button back-button">Назад</button>
+      </div>
+
+      <div id="subcategory-screen" class="screen">
+        <h2>Выберите подкатегорию</h2>
+        <div id="subcategory-buttons" class="subcategory-buttons"></div>
+        <button id="back-to-categories" class="button back-button">Назад</button>
+      </div>
+
+      <div id="quantity-screen" class="screen">
+        <h2>Количество</h2>
+        <p id="current-item-info"></p>
+        <input type="number" id="material-quantity" placeholder="Количество" min="1">
+        <div class="action-buttons-grid">
+          <button id="back-to-prev" class="button back-button">Назад</button>
+          <button id="submit-quantity" class="button">Отправить</button>
+        </div>
+        <div id="quantity-message" class="message" style="display: none;"></div>
+      </div>
+
+      <div id="confirm-new-material-screen" class="screen">
+        <h2>Выдано</h2>
+        <p id="confirm-prompt"></p>
+        <div class="confirm-buttons">
+          <button id="confirm-yes-button" class="button confirm-button yes">Да, ещё</button>
+          <button id="confirm-no-button" class="button confirm-button no">Нет, спасибо</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Скрытие ввода ID звёздочками
+    const shiftManagerIdInput = document.getElementById('shift-manager-id');
+    let isShifting = false;
+
+    shiftManagerIdInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        isShifting = true;
+      } else {
+        isShifting = false;
+      }
+    });
+
+    shiftManagerIdInput.addEventListener('input', function (e) {
+      if (isShifting) return;
+      const raw = this.getAttribute('data-raw') || '';
+      const newChar = e.data || '';
+      const newRaw = raw + newChar.replace(/[^0-9]/g, '');
+      
+      this.value = newRaw.replace(/./g, '*');
+      this.setAttribute('data-raw', newRaw);
+    });
+
+    shiftManagerIdInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        const raw = this.getAttribute('data-raw') || '';
+        const newRaw = raw.slice(0, -1);
+        this.value = newRaw.replace(/./g, '*');
+        this.setAttribute('data-raw', newRaw);
+      }
+    });
+
+    // Элементы DOM
+    const authStatusDiv = document.getElementById('auth-status');
+    const logoutButton = document.getElementById('logout-button');
+    const employeeIdInput = document.getElementById('employee-id');
+    const materialQuantityInput = document.getElementById('material-quantity');
+    const confirmPrompt = document.getElementById('confirm-prompt');
+
+    const authScreen = document.getElementById('auth-screen');
+    const employeeIdScreen = document.getElementById('employee-id-screen');
+    const categoryScreen = document.getElementById('category-screen');
+    const subcategoryScreen = document.getElementById('subcategory-screen');
+    const quantityScreen = document.getElementById('quantity-screen');
+    const confirmNewMaterialScreen = document.getElementById('confirm-new-material-screen');
+
+    const authMessage = document.getElementById('auth-message');
+    const employeeIdMessage = document.getElementById('employee-id-message');
+    const quantityMessage = document.getElementById('quantity-message');
+
+    const authButton = document.getElementById('auth-button');
+    const employeeIdSubmitButton = document.getElementById('employee-id-submit');
+    const submitQuantityButton = document.getElementById('submit-quantity');
+    const confirmYesButton = document.getElementById('confirm-yes-button');
+    const confirmNoButton = document.getElementById('confirm-no-button');
+
+    const categoryButtonsContainer = document.getElementById('category-buttons');
+    const subcategoryButtonsContainer = document.getElementById('subcategory-buttons');
+    const currentItemInfo = document.getElementById('current-item-info');
+
+    const backToEmployeeIdButton = document.getElementById('back-to-employee-id');
+    const backToCategoriesButton = document.getElementById('back-to-categories');
+    const backToPrevButton = document.getElementById('back-to-prev');
+
+    let currentShiftManager = null;
+    let currentEmployeeId = null;
+    let currentCategory = null;
+    let currentSubcategory = null;
+    let MATERIALS = {};
+    let UNITS = {};
+    
+    function showScreen(screen) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      screen.classList.add('active');
+      setupScreen(screen);
+    }
+
+    function setupScreen(screen) {
+      if (screen === authScreen) {
+        shiftManagerIdInput.value = '';
+        shiftManagerIdInput.setAttribute('data-raw', '');
+        shiftManagerIdInput.focus();
+      } else if (screen === employeeIdScreen) {
+        employeeIdInput.value = '';
+        employeeIdInput.focus();
+      } else if (screen === quantityScreen) {
+        materialQuantityInput.value = '';
+        materialQuantityInput.focus();
+      }
+    }
+
+    function showMessage(element, msg, type) {
+      element.textContent = msg;
+      element.className = `message ${type}`;
+      element.style.display = 'block';
+    }
+
+    function clearMessage(element) {
+      element.style.display = 'none';
+      element.textContent = '';
+    }
+
+    function formatShortName(fullName) {
+      const parts = fullName.split(' ');
+      const lastName = parts[0] || '';
+      const firstNameInitial = parts[1] ? parts[1][0] + '.' : '';
+      const middleNameInitial = parts[2] ? parts[2][0] + '.' : '';
+      return `${lastName} ${firstNameInitial}${middleNameInitial}`.trim();
+    }
+
+    function generateCategoryButtons() {
+      categoryButtonsContainer.innerHTML = '';
+      Object.values(MATERIALS).forEach(category => {
+        const button = document.createElement('button');
+        button.className = 'button category-button';
+        button.textContent = category.display;
+        
+        const hasBalance = category.isMaterial ? category.hasBalance : category.hasBalance;
+        
+        if (!hasBalance) {
+          button.disabled = true;
+        } else {
+          button.addEventListener('click', () => selectCategory(category));
+        }
+        categoryButtonsContainer.appendChild(button);
+      });
+    }
+
+    function generateSubcategoryButtons(categoryData) {
+      subcategoryButtonsContainer.innerHTML = '';
+      categoryData.subcategories.forEach(sub => {
+        const button = document.createElement('button');
+        button.className = 'button subcategory-button';
+        button.textContent = sub.display;
+        
+        if (!sub.hasBalance) {
+          button.disabled = true;
+        } else {
+          button.addEventListener('click', () => selectSubcategory(sub));
+        }
+        subcategoryButtonsContainer.appendChild(button);
+      });
+    }
+    
+    function showQuantityInput(displayName) {
+      currentItemInfo.textContent = displayName;
+      clearMessage(quantityMessage);
+    }
+
+    function authorizeShiftManager() {
+      const id = shiftManagerIdInput.getAttribute('data-raw');
+      if (!id || !/^\d+$/.test(id)) {
+        showMessage(authMessage, 'Введите корректный ID (только цифры).', 'error');
+        shiftManagerIdInput.focus();
+        return;
+      }
+      authButton.disabled = true;
+      authButton.classList.add('loading');
+      authButton.textContent = 'Проверка...';
+
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result.valid) {
+            currentShiftManager = result.name;
+            localStorage.setItem('shiftManagerName', currentShiftManager); // Сохраняем имя
+            authStatusDiv.textContent = `Ст. смены: ${formatShortName(currentShiftManager)}`;
+            authStatusDiv.style.display = 'block';
+            logoutButton.style.display = 'block';
+            showScreen(employeeIdScreen);
+            clearMessage(authMessage);
+            loadMaterials();
+          } else {
+            showMessage(authMessage, 'Неверный ID.', 'error');
+            shiftManagerIdInput.focus();
+          }
+          authButton.disabled = false;
+          authButton.classList.remove('loading');
+          authButton.textContent = 'Войти';
+        })
+        .withFailureHandler(error => {
+          showMessage(authMessage, `Ошибка: ${error.message || 'Сеть'}`, 'error');
+          authButton.disabled = false;
+          authButton.classList.remove('loading');
+          authButton.textContent = 'Войти';
+        })
+        .isShiftManager(id);
+    }
+
+    function loadMaterials() {
+      google.script.run
+        .withSuccessHandler(data => {
+          MATERIALS = data.materials;
+          UNITS = data.units;
+          generateCategoryButtons();
+        })
+        .withFailureHandler(error => {
+          alert('Ошибка загрузки материалов: ' + error.message);
+        })
+        .getMaterialsWithBalances();
+    }
+
+    function deauthorizeShiftManager() {
+      currentShiftManager = null;
+      localStorage.removeItem('shiftManagerName'); // Удаляем сохранённое имя
+      authStatusDiv.style.display = 'none';
+      logoutButton.style.display = 'none';
+      showMessage(authMessage, 'Вы деавторизованы.', 'success');
+      showScreen(authScreen);
+    }
+
+    function processEmployeeId() {
+      const id = employeeIdInput.value.trim();
+      if (!id || !/^\d+$/.test(id)) {
+        showMessage(employeeIdMessage, 'Введите корректный ID сотрудника (только цифры).', 'error');
+        employeeIdInput.focus();
+        return;
+      }
+      currentEmployeeId = id;
+      showMessage(employeeIdMessage, `ID сотрудника: ${id}`, 'success');
+      showScreen(categoryScreen);
+      clearMessage(employeeIdMessage);
+    }
+
+    function selectCategory(categoryData) {
+      currentCategory = categoryData;
+      if (categoryData.isMaterial) {
+        showQuantityInput(categoryData.display);
+        showScreen(quantityScreen);
+      } else if (categoryData.subcategories && categoryData.subcategories.length > 0) {
+        generateSubcategoryButtons(categoryData);
+        showScreen(subcategoryScreen);
+      } else {
+        showQuantityInput(categoryData.display);
+        showScreen(quantityScreen);
+      }
+    }
+
+    function selectSubcategory(subcategoryData) {
+      currentSubcategory = subcategoryData;
+      showQuantityInput(subcategoryData.display);
+      showScreen(quantityScreen);
+    }
+
+    async function submitMaterialData() {
+      const qty = parseInt(materialQuantityInput.value.trim());
+      if (isNaN(qty) || qty <= 0) {
+        showMessage(quantityMessage, 'Введите корректное количество.', 'error');
+        materialQuantityInput.focus();
+        return;
+      }
+
+      const accountName = currentSubcategory ? currentSubcategory.value : currentCategory.value;
+      const displayName = currentSubcategory ?
+      currentSubcategory.display : currentCategory.display;
+
+      submitQuantityButton.disabled = true;
+      submitQuantityButton.classList.add('loading');
+
+      const data = {
+        timestamp: new Date().toLocaleString('ru-RU'),
+        shiftManager: currentShiftManager,
+        employeeId: currentEmployeeId,
+        accountName: accountName,
+        quantity: qty
+      };
+      try {
+        const result = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .appendDataToSheet(data);
+        });
+        if (result.success) {
+          confirmPrompt.innerHTML = `
+            <strong>${displayName}</strong><br>
+            в количестве <strong>${qty} шт.</strong><br>
+            сотруднику <strong>ID: ${currentEmployeeId}</strong><br>
+            <span class="continue">Продолжить?</span>
+          `;
+          confirmPrompt.querySelector('.continue').style.cssText = `
+            display: block;
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--success-color);
+          `;
+          showScreen(confirmNewMaterialScreen);
+        } else {
+          showMessage(quantityMessage, result.message || 'Ошибка отправки.', 'error');
+        }
+      } catch (e) {
+        showMessage(quantityMessage, 'Ошибка подключения.', 'error');
+      } finally {
+        submitQuantityButton.disabled = false;
+        submitQuantityButton.classList.remove('loading');
+      }
+    }
+
+    // Обработчик Enter
+    function handleEnter(e) {
+      if (e.key === 'Enter') {
+        const focused = document.activeElement;
+        if (focused === shiftManagerIdInput) authorizeShiftManager();
+        else if (focused === employeeIdInput) processEmployeeId();
+        else if (focused === materialQuantityInput && !submitQuantityButton.disabled) {
+          submitMaterialData();
+        }
+      }
+    }
+
+    // Проверка на автоматическую деавторизацию
+    function checkAutoLogout() {
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+
+      if ((hour === 9 && minute === 0) || (hour === 21 && minute === 0)) {
+        if (currentShiftManager) {
+          deauthorizeShiftManager();
+          showMessage(authMessage, 'Автоматическая деавторизация по времени.', 'error');
+        }
+      }
+    }
+
+    // Обработчики событий
+    authButton.addEventListener('click', authorizeShiftManager);
+    logoutButton.addEventListener('click', deauthorizeShiftManager);
+    employeeIdSubmitButton.addEventListener('click', processEmployeeId);
+    submitQuantityButton.addEventListener('click', submitMaterialData);
+    confirmYesButton.addEventListener('click', () => {
+      generateCategoryButtons();
+      showScreen(categoryScreen);
+    });
+    confirmNoButton.addEventListener('click', () => {
+      currentEmployeeId = null;
+      employeeIdInput.value = '';
+      showScreen(employeeIdScreen);
+    });
+    backToEmployeeIdButton.addEventListener('click', () => showScreen(employeeIdScreen));
+    backToCategoriesButton.addEventListener('click', () => {
+      generateCategoryButtons();
+      showScreen(categoryScreen);
+    });
+    backToPrevButton.addEventListener('click', () => {
+      if (currentSubcategory) {
+        generateSubcategoryButtons(currentCategory);
+        showScreen(subcategoryScreen);
+      } else {
+        generateCategoryButtons();
+        showScreen(categoryScreen);
+      }
+    });
+
+    // Обработка Enter для всех полей
+    shiftManagerIdInput.addEventListener('keydown', handleEnter);
+    employeeIdInput.addEventListener('keydown', handleEnter);
+    materialQuantityInput.addEventListener('keydown', handleEnter);
+
+    // Запуск
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedManager = localStorage.getItem('shiftManagerName');
+      if (savedManager) {
+        currentShiftManager = savedManager;
+        authStatusDiv.textContent = `Ст. смены: ${formatShortName(currentShiftManager)}`;
+        authStatusDiv.style.display = 'block';
+        logoutButton.style.display = 'block';
+        showScreen(employeeIdScreen);
+        loadMaterials();
+      } else {
+        showScreen(authScreen);
+      }
+      setInterval(checkAutoLogout, 1000); // Запускаем проверку каждую секунду
+    });
+  </script>
 </body>
 </html>
